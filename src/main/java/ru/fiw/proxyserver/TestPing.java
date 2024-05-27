@@ -2,24 +2,25 @@ package ru.fiw.proxyserver;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelException;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
+import io.netty.channel.*;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.proxy.Socks4ProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
 import io.netty.handler.timeout.ReadTimeoutHandler;
-import net.minecraft.network.*;
+import net.minecraft.SharedConstants;
+import net.minecraft.network.ClientConnection;
+import net.minecraft.network.NetworkSide;
 import net.minecraft.network.listener.ClientQueryPacketListener;
+import net.minecraft.network.packet.c2s.handshake.ConnectionIntent;
 import net.minecraft.network.packet.c2s.handshake.HandshakeC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryPingC2SPacket;
 import net.minecraft.network.packet.c2s.query.QueryRequestC2SPacket;
-import net.minecraft.network.packet.s2c.query.QueryPongS2CPacket;
+import net.minecraft.network.packet.s2c.query.PingResultS2CPacket;
 import net.minecraft.network.packet.s2c.query.QueryResponseS2CPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Util;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -55,17 +56,18 @@ public class TestPing {
         clientConnection.setPacketListener(new ClientQueryPacketListener() {
             private boolean successful;
 
-            public void onResponse(QueryResponseS2CPacket packet) {
-                pingSentAt = Util.getMeasuringTimeMs();
-                clientConnection.send(new QueryPingC2SPacket(pingSentAt));
-            }
-
-            public void onPong(QueryPongS2CPacket packet) {
+            @Override
+            public void onPingResult(PingResultS2CPacket packet) {
                 successful = true;
                 pingDestination = null;
                 long pingToServer = Util.getMeasuringTimeMs() - pingSentAt;
                 state = Text.translatable("ui.proxyserver.ping.showPing", pingToServer).getString();
                 clientConnection.disconnect(Text.translatable("multiplayer.status.finished"));
+            }
+
+            public void onResponse(QueryResponseS2CPacket packet) {
+                pingSentAt = Util.getMeasuringTimeMs();
+                clientConnection.send(new QueryPingC2SPacket(pingSentAt));
             }
 
             public void onDisconnected(Text reason) {
@@ -86,7 +88,7 @@ public class TestPing {
         });
 
         try {
-            clientConnection.send(new HandshakeC2SPacket(ip, port, NetworkState.STATUS));
+            clientConnection.send(new HandshakeC2SPacket(SharedConstants.getGameVersion().getProtocolVersion(), ip, port, ConnectionIntent.STATUS));
             clientConnection.send(new QueryRequestC2SPacket());
         } catch (Throwable throwable) {
             state = Formatting.RED + Text.translatable("ui.proxyserver.err.cantPing", ip).getString();
@@ -96,19 +98,17 @@ public class TestPing {
     private ClientConnection createTestClientConnection(InetAddress address, int port) {
         final ClientConnection clientConnection = new ClientConnection(NetworkSide.CLIENTBOUND);
 
-        (new Bootstrap()).group(ClientConnection.CLIENT_IO_GROUP.get()).handler(new ChannelInitializer<Channel>() {
+        (new Bootstrap()).group(ClientConnection.CLIENT_IO_GROUP.get()).handler(new ChannelInitializer<>() {
             protected void initChannel(Channel channel) {
+                ClientConnection.setHandlers(channel);
+
                 try {
                     channel.config().setOption(ChannelOption.TCP_NODELAY, true);
-                } catch (ChannelException ignored) {
+                } catch (ChannelException channelexception) {
                 }
 
-                channel.pipeline().addLast("timeout", new ReadTimeoutHandler(30))
-                        .addLast("splitter", new SplitterHandler())
-                        .addLast("decoder", new DecoderHandler(NetworkSide.CLIENTBOUND))
-                        .addLast("prepender", new SizePrepender())
-                        .addLast("encoder", new PacketEncoder(NetworkSide.SERVERBOUND))
-                        .addLast("packet_handler", clientConnection);
+                ChannelPipeline channelpipeline = channel.pipeline().addLast("timeout", new ReadTimeoutHandler(30));
+                ClientConnection.addHandlers(channelpipeline, NetworkSide.CLIENTBOUND, null);
 
                 if (proxy.type == Proxy.ProxyType.SOCKS5) {
                     channel.pipeline().addFirst(new Socks5ProxyHandler(new InetSocketAddress(proxy.getIp(), proxy.getPort()), proxy.username.isEmpty() ? null : proxy.username, proxy.password.isEmpty() ? null : proxy.password));

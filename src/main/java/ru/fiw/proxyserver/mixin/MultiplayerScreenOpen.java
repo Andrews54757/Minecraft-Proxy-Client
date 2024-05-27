@@ -16,7 +16,7 @@ import ru.fiw.proxyserver.ProxyServer;
 public class MultiplayerScreenOpen {
     @Inject(method = "init()V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screen/multiplayer/MultiplayerScreen;updateButtonActivationStates()V"))
     public void multiplayerGuiOpen(CallbackInfo ci) {
-        String playerName = MinecraftClient.getInstance().getSession().getProfile().getName();
+        String playerName = MinecraftClient.getInstance().getSession().getUsername();
         if (!playerName.equals(Config.lastPlayerName)) {
             Config.lastPlayerName = playerName;
             if (Config.accounts.containsKey(playerName)) {

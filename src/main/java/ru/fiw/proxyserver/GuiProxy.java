@@ -79,7 +79,7 @@ public class GuiProxy extends Screen {
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float partialTicks) {
-        this.renderBackground(context);
+        super.render(context, mouseX, mouseY, partialTicks);
 
         if (enabledCheck.isChecked() && !isValidIpPort(ipPort.getText())) {
             enabledCheck.onPress();
@@ -101,17 +101,11 @@ public class GuiProxy extends Screen {
         }
 
         context.drawCenteredTextWithShadow(this.textRenderer, !msg.isEmpty() ? msg : testPing.state, this.width / 2, positionY[6] + 5, 10526880);
-
-        super.render(context, mouseX, mouseY, partialTicks);
     }
 
     @Override
     public void tick() {
         testPing.pingPendingNetworks();
-
-        this.ipPort.tick();
-        this.username.tick();
-        this.password.tick();
     }
 
     @Override
@@ -169,7 +163,12 @@ public class GuiProxy extends Screen {
         }).dimensions(posXButtons + buttonLength / 2 + 3, positionY[8], buttonLength / 2 - 3, 20).build();
         this.addDrawableChild(test);
 
-        this.enabledCheck = new CheckboxWidget((this.width / 2) - (15 + textRenderer.getWidth(Text.translatable("ui.proxyserver.options.proxyEnabled"))) / 2, positionY[7], buttonLength, 20, Text.translatable("ui.proxyserver.options.proxyEnabled"), ProxyServer.proxyEnabled);
+        CheckboxWidget.Builder checkboxBuilder = CheckboxWidget.builder(Text.translatable("ui.proxyserver.options.proxyEnabled"), this.textRenderer);
+        checkboxBuilder.pos((this.width / 2) - (15 + textRenderer.getWidth(Text.translatable("ui.proxyserver.options.proxyEnabled"))) / 2, positionY[7]);
+        if (ProxyServer.proxyEnabled) {
+            checkboxBuilder.checked(ProxyServer.proxyEnabled);
+        }
+        this.enabledCheck = checkboxBuilder.build();
         this.addDrawableChild(this.enabledCheck);
 
         ButtonWidget cancel = ButtonWidget.builder(Text.translatable("ui.proxyserver.options.cancel"), (button) -> {
