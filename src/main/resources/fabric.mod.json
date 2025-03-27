@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "proxyserver",
+  "id": "proxyclient",
   "version": "${version}",
 
   "name": "Proxy Server",
@@ -14,15 +14,15 @@
   },
 
   "license": "MIT",
-  "icon": "assets/proxyserver/icon.png",
+  "icon": "assets/proxyclient/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "main": [
-      "ru.fiw.proxyserver.ProxyServer"
+      "ru.fiw.proxyclient.ProxyClient"
     ]
   },
   "mixins": [
-    "proxyserver.mixins.json"
+    "proxyclient.mixins.json"
   ]
 }

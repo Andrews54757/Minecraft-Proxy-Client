@@ -1,4 +1,4 @@
-package ru.fiw.proxyserver.mixin;
+package ru.fiw.proxyclient.mixin;
 
 import net.minecraft.client.gui.Drawable;
 import net.minecraft.client.gui.Element;
